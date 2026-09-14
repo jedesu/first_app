@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>first_app — Spotify Auto-Sorter</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>🎧 Liked Songs Auto-Sorter</h1>
+    <p class="subtitle">Sort your Spotify Liked Songs by month or season, and turn any group into a playlist.</p>
+  </header>
+
+  <main>
+    <section id="login-section">
+      <a href="/login" class="btn primary">Connect with Spotify</a>
+    </section>
+
+    <section id="app-section" hidden>
+      <div class="controls">
+        <span id="who"></span>
+        <div class="control-row">
+          <label>Source:
+            <select id="source">
+              <option value="liked">Liked Songs (by date added)</option>
+              <option value="recent">Recently Played (last ~50)</option>
+            </select>
+          </label>
+          <label>Group by:
+            <select id="groupBy">
+              <option value="month">Month</option>
+              <option value="season">Season</option>
+            </select>
+          </label>
+          <button id="loadBtn" class="btn primary">Sort my songs</button>
+        </div>
+      </div>
+
+      <div id="status"></div>
+      <div id="groups"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

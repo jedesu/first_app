@@ -1,0 +1,105 @@
+:root {
+  --bg: #121212;
+  --card: #1e1e1e;
+  --text: #f2f2f2;
+  --muted: #a0a0a0;
+  --accent: #1db954;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+header {
+  padding: 32px 24px 16px;
+  text-align: center;
+}
+h1 { margin: 0 0 8px; }
+.subtitle { color: var(--muted); margin: 0; }
+main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 24px 48px;
+}
+.btn {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  text-decoration: none;
+}
+.btn.primary {
+  background: var(--accent);
+  color: #04120a;
+}
+#login-section {
+  text-align: center;
+  padding: 48px 0;
+}
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.control-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+select {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: var(--card);
+  color: var(--text);
+}
+#who { color: var(--muted); }
+#status { min-height: 24px; color: var(--muted); margin-bottom: 16px; }
+.group-card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+.group-card h3 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 12px;
+}
+.group-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.group-card li {
+  padding: 4px 0;
+  border-bottom: 1px solid #2a2a2a;
+  font-size: 14px;
+}
+.group-card li .artist { color: var(--muted); }
+.make-playlist-btn {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.make-playlist-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.playlist-link {
+  color: var(--accent);
+  font-size: 13px;
+}
