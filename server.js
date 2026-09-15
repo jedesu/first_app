@@ -65,6 +65,7 @@ app.get('/callback', async (req, res) => {
     if (!tokenRes.ok) throw new Error(JSON.stringify(tokenData));
     req.session.accessToken = tokenData.access_token;
     req.session.refreshToken = tokenData.refresh_token;
+    req.session.grantedScope = tokenData.scope;
     res.redirect('/');
   } catch (err) {
     console.error(err);
@@ -111,6 +112,10 @@ app.get('/api/recent-by-bucket', requireAuth, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+app.get('/api/debug-scope', requireAuth, (req, res) => {
+  res.json({ requestedScopes: SCOPES, grantedScope: req.session.grantedScope || null });
 });
 
 app.get('/api/playlists', requireAuth, async (req, res) => {
