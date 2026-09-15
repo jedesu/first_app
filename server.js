@@ -98,13 +98,15 @@ app.get('/api/liked-by-bucket', requireAuth, async (req, res) => {
 });
 
 app.get('/api/recent-by-bucket', requireAuth, async (req, res) => {
-  const groupBy = req.query.groupBy === 'season' ? 'season' : 'month';
   try {
     const tracks = await spotify.getRecentlyPlayed(req.session.accessToken);
-    const groups = spotify.groupByBucket(tracks, 'playedAt', groupBy).map(group => ({
-      ...group,
-      tracks: spotify.dedupeTracks(group.tracks)
-    }));
+    // Recently Played only ever covers the last ~50 plays (usually a day or two),
+    // so splitting it by month/season just produces one oddly-labeled bucket.
+    // Show it as a single flat group instead.
+    const dedupedTracks = spotify.dedupeTracks(tracks);
+    const groups = dedupedTracks.length > 0
+      ? [{ label: 'Recently Played', tracks: dedupedTracks }]
+      : [];
     const overallTopPlayed = spotify.topPlayedByCount(tracks, 20);
     res.json({ groups, overallTopPlayed });
   } catch (err) {
