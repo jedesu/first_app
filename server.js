@@ -132,7 +132,8 @@ app.get('/api/debug-create-raw', requireAuth, async (req, res) => {
     const headers = {};
     spotifyRes.headers.forEach((v, k) => { headers[k] = v; });
     const body = await spotifyRes.text();
-    res.json({ userId: me.id, status: spotifyRes.status, headers, body });
+    console.log('[debug-create-raw]', JSON.stringify({ userId: me.id, status: spotifyRes.status, headers, body }));
+    res.json({ ok: true, loggedToServerConsole: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
