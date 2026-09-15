@@ -99,8 +99,35 @@ app.get('/api/recent-by-bucket', requireAuth, async (req, res) => {
   const groupBy = req.query.groupBy === 'season' ? 'season' : 'month';
   try {
     const tracks = await spotify.getRecentlyPlayed(req.session.accessToken);
-    const groups = spotify.groupByBucket(tracks, 'playedAt', groupBy);
-    res.json({ groups });
+    const groups = spotify.groupByBucket(tracks, 'playedAt', groupBy).map(group => ({
+      ...group,
+      topPlayed: spotify.topPlayedByCount(group.tracks, 20),
+      tracks: spotify.dedupeTracks(group.tracks)
+    }));
+    const overallTopPlayed = spotify.topPlayedByCount(tracks, 20);
+    res.json({ groups, overallTopPlayed });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/playlists', requireAuth, async (req, res) => {
+  try {
+    const playlists = await spotify.getUserPlaylists(req.session.accessToken);
+    res.json({ playlists });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/add-to-playlist', requireAuth, async (req, res) => {
+  const { playlistId, uris } = req.body;
+  if (!playlistId || !Array.isArray(uris) || uris.length === 0) {
+    return res.status(400).json({ error: 'playlistId and uris are required' });
+  }
+  try {
+    await spotify.addTracksToPlaylist(req.session.accessToken, playlistId, uris);
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

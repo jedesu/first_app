@@ -138,17 +138,6 @@ select:focus { outline: 2px solid var(--accent); }
   width: 16px;
   height: 16px;
 }
-.week-block {
-  margin-bottom: 14px;
-}
-.week-block:last-child { margin-bottom: 0; }
-.week-header {
-  padding: 4px 0;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 4px;
-}
-.week-header .track-row { padding: 6px 6px; }
-.week-header strong { font-size: 13px; }
 .group-card ul {
   list-style: none;
   padding: 0;
@@ -207,6 +196,28 @@ select:focus { outline: 2px solid var(--accent); }
   color: var(--accent);
   font-size: 13px;
   font-weight: 700;
+}
+.playlist-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.playlist-action select { font-size: 12px; padding: 6px 10px; }
+.top-played {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  margin-top: 4px;
+}
+.top-played h4 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
 }
 
 #selection-bar[hidden] {

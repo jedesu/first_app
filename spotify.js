@@ -90,8 +90,46 @@ function groupByBucket(tracks, dateField, groupBy) {
     .sort((a, b) => b.sortKey - a.sortKey);
 }
 
+// Collapses repeat plays of the same track down to one entry (keeps the first/most-recent occurrence).
+function dedupeTracks(tracks) {
+  const seen = new Set();
+  const result = [];
+  for (const track of tracks) {
+    if (seen.has(track.uri)) continue;
+    seen.add(track.uri);
+    result.push(track);
+  }
+  return result;
+}
+
+// Counts how many times each track appears (e.g. within a recently-played bucket)
+// and returns the top N, most-played first.
+function topPlayedByCount(tracks, n = 20) {
+  const counts = new Map(); // uri -> { ...track, count }
+  for (const track of tracks) {
+    if (!counts.has(track.uri)) counts.set(track.uri, { ...track, count: 0 });
+    counts.get(track.uri).count += 1;
+  }
+  return Array.from(counts.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, n);
+}
+
 async function getMe(accessToken) {
   return apiFetch('https://api.spotify.com/v1/me', accessToken);
+}
+
+async function getUserPlaylists(accessToken) {
+  const playlists = [];
+  let url = 'https://api.spotify.com/v1/me/playlists?limit=50';
+  while (url) {
+    const data = await apiFetch(url, accessToken);
+    for (const item of data.items) {
+      playlists.push({ id: item.id, name: item.name, url: item.external_urls.spotify });
+    }
+    url = data.next;
+  }
+  return playlists;
 }
 
 async function createPlaylist(accessToken, userId, name, description) {
@@ -115,7 +153,10 @@ module.exports = {
   getAllLikedSongs,
   getRecentlyPlayed,
   groupByBucket,
+  dedupeTracks,
+  topPlayedByCount,
   getMe,
+  getUserPlaylists,
   createPlaylist,
   addTracksToPlaylist
 };
