@@ -7,17 +7,6 @@ const loadBtn = document.getElementById('loadBtn');
 const sourceSelect = document.getElementById('source');
 const groupBySelect = document.getElementById('groupBy');
 
-const selectionBar = document.getElementById('selection-bar');
-const selectionCountEl = document.getElementById('selection-count');
-const selectionNameInput = document.getElementById('selection-name');
-const selectionTargetSelect = document.getElementById('selection-target');
-const selectionCreateBtn = document.getElementById('selection-create-btn');
-const selectionClearBtn = document.getElementById('selection-clear-btn');
-const selectionResultEl = document.getElementById('selection-result');
-
-// uri -> { name, artists, date }
-const selectedTracks = new Map();
-
 // Existing playlists the user can add songs to, fetched once after login.
 let userPlaylists = [];
 
@@ -50,7 +39,7 @@ function playlistTargetSelectHtml(cls) {
 }
 
 // select + a name field (used only when "+ New playlist" is chosen) so users can
-// rename the playlist before creating it, same as the Custom tab's name field.
+// rename the playlist before creating it.
 function playlistTargetControlsHtml(selectCls, nameCls, placeholder) {
   return `
     ${playlistTargetSelectHtml(selectCls)}
@@ -86,10 +75,6 @@ async function addTracksToTarget(playlistId, label, uris) {
   return { url, message };
 }
 
-function isCustomMode() {
-  return groupBySelect.value === 'custom';
-}
-
 async function checkLogin() {
   const res = await fetch('/api/me');
   if (res.ok) {
@@ -110,42 +95,8 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-function updateSelectionBar() {
-  const count = selectedTracks.size;
-  selectionBar.hidden = !isCustomMode() || count === 0;
-  selectionCountEl.textContent = `${count} song${count === 1 ? '' : 's'} selected`;
-}
-
 function trackListHtml(tracks) {
   return `<ul>${tracks.map(t => `<li><div class="track-row"><span>${escapeHtml(t.name)} <span class="artist">— ${escapeHtml(t.artists)}</span></span></div></li>`).join('')}</ul>`;
-}
-
-function trackCheckboxHtml(t) {
-  const date = t.addedAt || t.playedAt || '';
-  return `
-    <li>
-      <label class="track-row">
-        <input type="checkbox" class="track-checkbox" data-uri="${escapeHtml(t.uri)}" data-name="${escapeHtml(t.name)}" data-artists="${escapeHtml(t.artists)}" data-date="${escapeHtml(date)}" ${selectedTracks.has(t.uri) ? 'checked' : ''} />
-        <span>${escapeHtml(t.name)} <span class="artist">— ${escapeHtml(t.artists)}</span></span>
-      </label>
-    </li>
-  `;
-}
-
-function customGroupHtml(group) {
-  return `<ul>${group.tracks.map(t => trackCheckboxHtml(t)).join('')}</ul>`;
-}
-
-function bindTrackCheckbox(cb) {
-  cb.addEventListener('change', () => {
-    const uri = cb.dataset.uri;
-    if (cb.checked) {
-      selectedTracks.set(uri, { name: cb.dataset.name, artists: cb.dataset.artists, date: cb.dataset.date });
-    } else {
-      selectedTracks.delete(uri);
-    }
-    updateSelectionBar();
-  });
 }
 
 function overallTopPlayedCardHtml(overallTopPlayed) {
@@ -200,9 +151,8 @@ function bindOverallTopPlayedCard(overallTopPlayed) {
 
 function renderGroups(groups, showTopPlayed, overallTopPlayed) {
   groupsEl.innerHTML = '';
-  const custom = isCustomMode();
 
-  if (showTopPlayed && !custom && overallTopPlayed && overallTopPlayed.length > 0) {
+  if (showTopPlayed && overallTopPlayed && overallTopPlayed.length > 0) {
     groupsEl.insertAdjacentHTML('beforeend', overallTopPlayedCardHtml(overallTopPlayed));
     bindOverallTopPlayedCard(overallTopPlayed);
   }
@@ -214,54 +164,39 @@ function renderGroups(groups, showTopPlayed, overallTopPlayed) {
     card.innerHTML = `
       <h3>
         <span class="month-heading">
-          ${custom ? '<input type="checkbox" class="month-select-all" />' : ''}
           <span>${escapeHtml(group.label)} (${group.tracks.length})</span>
         </span>
-        ${custom ? '' : `<span class="playlist-action">${playlistTargetControlsHtml('group-target', 'group-name', `${group.label} — auto-sorted`)}<button class="make-playlist-btn">Add this group</button></span>`}
+        <span class="playlist-action">${playlistTargetControlsHtml('group-target', 'group-name', `${group.label} — auto-sorted`)}<button class="make-playlist-btn">Add this group</button></span>
       </h3>
-      ${custom ? customGroupHtml(group) : trackListHtml(group.tracks)}
+      ${trackListHtml(group.tracks)}
       <div class="result"></div>
     `;
 
-    if (custom) {
-      card.querySelectorAll('.track-checkbox').forEach(bindTrackCheckbox);
-
-      const monthSelectAll = card.querySelector('.month-select-all');
-      const allMonthCheckboxes = Array.from(card.querySelectorAll('.track-checkbox'));
-      monthSelectAll.addEventListener('change', () => {
-        allMonthCheckboxes.forEach(cb => {
-          if (cb.checked !== monthSelectAll.checked) {
-            cb.checked = monthSelectAll.checked;
-            cb.dispatchEvent(new Event('change'));
-          }
-        });
-      });
-    } else {
-      const btn = card.querySelector('.make-playlist-btn');
-      const select = card.querySelector('.group-target');
-      const nameInput = card.querySelector('.group-name');
-      const resultDiv = card.querySelector('.result');
-      btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        btn.textContent = 'Adding...';
-        try {
-          const label = nameInput.value.trim() || `${group.label} — auto-sorted`;
-          const { url, message } = await addTracksToTarget(select.value, label, group.tracks.map(t => t.uri));
-          resultDiv.innerHTML = `<a class="playlist-link" href="${url}" target="_blank">Open playlist ↗</a>${message ? ` <span class="artist">— ${escapeHtml(message)}</span>` : ''}`;
-          // Left active — lets you keep adding other groups into this same playlist.
-          const newId = !select.value ? playlistIdFromUrl(url) : select.value;
-          if (newId) {
-            await loadUserPlaylists();
-            select.value = newId;
-          }
-        } catch (err) {
-          resultDiv.textContent = `Error: ${err.message}`;
-        } finally {
-          btn.disabled = false;
-          btn.textContent = 'Add this group';
+    const btn = card.querySelector('.make-playlist-btn');
+    const select = card.querySelector('.group-target');
+    const nameInput = card.querySelector('.group-name');
+    const resultDiv = card.querySelector('.result');
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = 'Adding...';
+      try {
+        const label = nameInput.value.trim() || `${group.label} — auto-sorted`;
+        const { url, message } = await addTracksToTarget(select.value, label, group.tracks.map(t => t.uri));
+        resultDiv.innerHTML = `<a class="playlist-link" href="${url}" target="_blank">Open playlist ↗</a>${message ? ` <span class="artist">— ${escapeHtml(message)}</span>` : ''}`;
+        // Left active — lets you keep adding other groups into this same playlist.
+        const newId = !select.value ? playlistIdFromUrl(url) : select.value;
+        if (newId) {
+          await loadUserPlaylists();
+          select.value = newId;
         }
-      });
-    }
+      } catch (err) {
+        resultDiv.textContent = `Error: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Add this group';
+      }
+    });
+
     groupsEl.appendChild(card);
   });
 }
@@ -277,47 +212,12 @@ async function createPlaylist(label, uris) {
   return data.playlistUrl;
 }
 
-selectionCreateBtn.addEventListener('click', async () => {
-  if (selectedTracks.size === 0) return;
-  const name = selectionNameInput.value.trim() || 'My custom mix';
-  selectionCreateBtn.disabled = true;
-  selectionCreateBtn.textContent = selectionTargetSelect.value ? 'Adding...' : 'Creating...';
-  selectionResultEl.textContent = '';
-  try {
-    const uris = Array.from(selectedTracks.entries())
-      .sort((a, b) => new Date(a[1].date) - new Date(b[1].date))
-      .map(([uri]) => uri);
-    const { url, message } = await addTracksToTarget(selectionTargetSelect.value, name, uris);
-    selectionResultEl.innerHTML = `<a class="playlist-link" href="${url}" target="_blank">Open playlist ↗</a>${message ? ` — ${escapeHtml(message)}` : ''}`;
-    selectedTracks.clear();
-    document.querySelectorAll('.track-row input[type="checkbox"]').forEach(cb => { cb.checked = false; });
-    updateSelectionBar();
-  } catch (err) {
-    selectionResultEl.textContent = `Error: ${err.message}`;
-  } finally {
-    selectionCreateBtn.disabled = false;
-    selectionCreateBtn.textContent = 'Create playlist';
-  }
-});
-
-selectionClearBtn.addEventListener('click', () => {
-  selectedTracks.clear();
-  document.querySelectorAll('.track-row input[type="checkbox"]').forEach(cb => { cb.checked = false; });
-  selectionResultEl.textContent = '';
-  updateSelectionBar();
-});
-
 loadBtn.addEventListener('click', async () => {
   statusEl.textContent = 'Loading your songs from Spotify...';
   groupsEl.innerHTML = '';
   const source = sourceSelect.value;
-  // "custom" isn't a real server-side bucket — browse by month underneath, then pick songs individually
-  const groupBy = isCustomMode() ? 'month' : groupBySelect.value;
+  const groupBy = groupBySelect.value;
   const endpoint = source === 'recent' ? '/api/recent-by-bucket' : '/api/liked-by-bucket';
-  if (!isCustomMode()) {
-    selectedTracks.clear();
-    updateSelectionBar();
-  }
   try {
     const res = await fetch(`${endpoint}?groupBy=${groupBy}`);
     const data = await res.json();

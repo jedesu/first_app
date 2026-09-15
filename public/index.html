@@ -31,7 +31,6 @@
             <select id="groupBy">
               <option value="month">Month</option>
               <option value="season">Season</option>
-              <option value="custom">Custom (pick songs)</option>
             </select>
           </label>
           <button id="loadBtn" class="btn primary">Sort my songs</button>
@@ -42,15 +41,6 @@
       <div id="groups"></div>
     </section>
   </main>
-
-  <div id="selection-bar" hidden>
-    <span id="selection-count">0 songs selected</span>
-    <select id="selection-target" class="playlist-target"><option value="">+ New playlist</option></select>
-    <input id="selection-name" type="text" placeholder="Playlist name" />
-    <button id="selection-create-btn" class="btn primary">Create playlist</button>
-    <button id="selection-clear-btn" class="btn ghost">Clear</button>
-    <span id="selection-result"></span>
-  </div>
 
   <script src="app.js"></script>
 </body>
