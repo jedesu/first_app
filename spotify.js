@@ -22,7 +22,8 @@ async function apiFetch(url, accessToken, options = {}) {
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Spotify API error ${res.status}: ${body}`);
+    const wwwAuth = res.headers.get('www-authenticate');
+    throw new Error(`Spotify API error ${res.status}: ${body}${wwwAuth ? ` | www-authenticate: ${wwwAuth}` : ''}`);
   }
   if (res.status === 204) return null;
   return res.json();
