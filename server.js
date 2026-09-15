@@ -65,7 +65,6 @@ app.get('/callback', async (req, res) => {
     if (!tokenRes.ok) throw new Error(JSON.stringify(tokenData));
     req.session.accessToken = tokenData.access_token;
     req.session.refreshToken = tokenData.refresh_token;
-    req.session.grantedScope = tokenData.scope;
     res.redirect('/');
   } catch (err) {
     console.error(err);
@@ -109,31 +108,6 @@ app.get('/api/recent-by-bucket', requireAuth, async (req, res) => {
     }));
     const overallTopPlayed = spotify.topPlayedByCount(tracks, 20);
     res.json({ groups, overallTopPlayed });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/debug-scope', requireAuth, (req, res) => {
-  res.json({ requestedScopes: SCOPES, grantedScope: req.session.grantedScope || null });
-});
-
-app.get('/api/debug-create-raw', requireAuth, async (req, res) => {
-  try {
-    const me = await spotify.getMe(req.session.accessToken);
-    const spotifyRes = await fetch(`https://api.spotify.com/v1/users/${me.id}/playlists`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${req.session.accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ name: 'debug raw test', public: false })
-    });
-    const headers = {};
-    spotifyRes.headers.forEach((v, k) => { headers[k] = v; });
-    const body = await spotifyRes.text();
-    console.log('[debug-create-raw]', JSON.stringify({ userId: me.id, status: spotifyRes.status, headers, body }));
-    res.json({ ok: true, loggedToServerConsole: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
