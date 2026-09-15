@@ -118,6 +118,26 @@ app.get('/api/debug-scope', requireAuth, (req, res) => {
   res.json({ requestedScopes: SCOPES, grantedScope: req.session.grantedScope || null });
 });
 
+app.get('/api/debug-create-raw', requireAuth, async (req, res) => {
+  try {
+    const me = await spotify.getMe(req.session.accessToken);
+    const spotifyRes = await fetch(`https://api.spotify.com/v1/users/${me.id}/playlists`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${req.session.accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name: 'debug raw test', public: false })
+    });
+    const headers = {};
+    spotifyRes.headers.forEach((v, k) => { headers[k] = v; });
+    const body = await spotifyRes.text();
+    res.json({ userId: me.id, status: spotifyRes.status, headers, body });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/playlists', requireAuth, async (req, res) => {
   try {
     const playlists = await spotify.getUserPlaylists(req.session.accessToken);
