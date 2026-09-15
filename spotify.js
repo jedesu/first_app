@@ -17,6 +17,7 @@ async function apiFetch(url, accessToken, options = {}) {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
+      'User-Agent': 'PlaylistGrouper/1.0',
       ...(options.headers || {})
     }
   });
