@@ -146,8 +146,8 @@ app.post('/api/create-playlist', requireAuth, async (req, res) => {
   try {
     const playlist = await spotify.createPlaylist(
       req.session.accessToken,
-      `${label} — auto-sorted`,
-      `Auto-sorted by first_app for ${label}`
+      label,
+      `Made with Playlist Grouper`
     );
     await spotify.addTracksToPlaylist(req.session.accessToken, playlist.id, uris);
     res.json({ playlistUrl: playlist.external_urls.spotify });

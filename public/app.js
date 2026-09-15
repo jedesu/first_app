@@ -49,6 +49,20 @@ function playlistTargetSelectHtml(cls) {
   return `<select class="playlist-target ${cls}">${playlistTargetOptionsHtml()}</select>`;
 }
 
+// select + a name field (used only when "+ New playlist" is chosen) so users can
+// rename the playlist before creating it, same as the Custom tab's name field.
+function playlistTargetControlsHtml(selectCls, nameCls, placeholder) {
+  return `
+    ${playlistTargetSelectHtml(selectCls)}
+    <input type="text" class="playlist-name-input ${nameCls}" placeholder="${escapeHtml(placeholder)}" />
+  `;
+}
+
+function playlistIdFromUrl(url) {
+  const m = url.match(/playlist\/([A-Za-z0-9]+)/);
+  return m ? m[1] : null;
+}
+
 // Adds uris to an existing playlist (if playlistId is set) or creates a new one.
 // Returns { url, message } — for an existing playlist, songs already in it are skipped
 // server-side and message notes how many were added vs. skipped.
@@ -143,7 +157,7 @@ function overallTopPlayedCardHtml(overallTopPlayed) {
       <h3>
         <span>Overall Top Played <span class="artist">(across all recent plays)</span></span>
         <span class="playlist-action">
-          ${playlistTargetSelectHtml('overall-top-played-target')}
+          ${playlistTargetControlsHtml('overall-top-played-target', 'overall-top-played-name', 'Overall Top Played')}
           <button class="make-playlist-btn make-overall-top-playlist-btn">Add overall top played</button>
         </span>
       </h3>
@@ -158,15 +172,23 @@ function bindOverallTopPlayedCard(overallTopPlayed) {
   if (!card) return;
   const btn = card.querySelector('.make-overall-top-playlist-btn');
   const select = card.querySelector('.overall-top-played-target');
+  const nameInput = card.querySelector('.overall-top-played-name');
   const resultDiv = card.querySelector('.overall-top-played-result');
   btn.addEventListener('click', async () => {
     btn.disabled = true;
     btn.textContent = 'Adding...';
     try {
-      const { url, message } = await addTracksToTarget(select.value, 'Overall Top Played', overallTopPlayed.map(t => t.uri));
+      const label = nameInput.value.trim() || 'Overall Top Played';
+      const { url, message } = await addTracksToTarget(select.value, label, overallTopPlayed.map(t => t.uri));
       // Left active (not removed) — the top-played list changes over time, so the
       // user can reload and add again later without re-adding songs already there.
       resultDiv.innerHTML = `<a class="playlist-link" href="${url}" target="_blank">Open playlist ↗</a>${message ? ` <span class="artist">— ${escapeHtml(message)}</span>` : ''}`;
+      // Point future clicks (and other groups' dropdowns) at the playlist just used.
+      const newId = !select.value ? playlistIdFromUrl(url) : select.value;
+      if (newId) {
+        await loadUserPlaylists();
+        select.value = newId;
+      }
     } catch (err) {
       resultDiv.textContent = `Error: ${err.message}`;
     } finally {
@@ -195,7 +217,7 @@ function renderGroups(groups, showTopPlayed, overallTopPlayed) {
           ${custom ? '<input type="checkbox" class="month-select-all" />' : ''}
           <span>${escapeHtml(group.label)} (${group.tracks.length})</span>
         </span>
-        ${custom ? '' : `<span class="playlist-action">${playlistTargetSelectHtml('group-target')}<button class="make-playlist-btn">Add this group</button></span>`}
+        ${custom ? '' : `<span class="playlist-action">${playlistTargetControlsHtml('group-target', 'group-name', `${group.label} — auto-sorted`)}<button class="make-playlist-btn">Add this group</button></span>`}
       </h3>
       ${custom ? customGroupHtml(group) : trackListHtml(group.tracks)}
       <div class="result"></div>
@@ -217,19 +239,26 @@ function renderGroups(groups, showTopPlayed, overallTopPlayed) {
     } else {
       const btn = card.querySelector('.make-playlist-btn');
       const select = card.querySelector('.group-target');
+      const nameInput = card.querySelector('.group-name');
       const resultDiv = card.querySelector('.result');
       btn.addEventListener('click', async () => {
         btn.disabled = true;
         btn.textContent = 'Adding...';
         try {
-          const { url, message } = await addTracksToTarget(select.value, group.label, group.tracks.map(t => t.uri));
+          const label = nameInput.value.trim() || `${group.label} — auto-sorted`;
+          const { url, message } = await addTracksToTarget(select.value, label, group.tracks.map(t => t.uri));
           resultDiv.innerHTML = `<a class="playlist-link" href="${url}" target="_blank">Open playlist ↗</a>${message ? ` <span class="artist">— ${escapeHtml(message)}</span>` : ''}`;
-          btn.remove();
-          select.remove();
+          // Left active — lets you keep adding other groups into this same playlist.
+          const newId = !select.value ? playlistIdFromUrl(url) : select.value;
+          if (newId) {
+            await loadUserPlaylists();
+            select.value = newId;
+          }
         } catch (err) {
+          resultDiv.textContent = `Error: ${err.message}`;
+        } finally {
           btn.disabled = false;
           btn.textContent = 'Add this group';
-          resultDiv.textContent = `Error: ${err.message}`;
         }
       });
     }

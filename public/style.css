@@ -201,8 +201,19 @@ select:focus { outline: 2px solid var(--accent); }
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 .playlist-action select { font-size: 12px; padding: 6px 10px; }
+.playlist-name-input {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 500px;
+  border: 1px solid #3a3a3a;
+  background: #2a2a2a;
+  color: var(--text);
+  width: 160px;
+}
+.playlist-name-input:focus { outline: 2px solid var(--accent); }
 
 #selection-bar[hidden] {
   display: none;
