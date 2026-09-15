@@ -134,8 +134,8 @@ async function getUserPlaylists(accessToken) {
   return playlists;
 }
 
-async function createPlaylist(accessToken, userId, name, description) {
-  return apiFetch(`https://api.spotify.com/v1/users/${userId}/playlists`, accessToken, {
+async function createPlaylist(accessToken, name, description) {
+  return apiFetch('https://api.spotify.com/v1/me/playlists', accessToken, {
     method: 'POST',
     body: JSON.stringify({ name, description, public: false })
   });
@@ -144,7 +144,7 @@ async function createPlaylist(accessToken, userId, name, description) {
 async function addTracksToPlaylist(accessToken, playlistId, uris) {
   for (let i = 0; i < uris.length; i += 100) {
     const chunk = uris.slice(i, i + 100);
-    await apiFetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, accessToken, {
+    await apiFetch(`https://api.spotify.com/v1/playlists/${playlistId}/items`, accessToken, {
       method: 'POST',
       body: JSON.stringify({ uris: chunk })
     });

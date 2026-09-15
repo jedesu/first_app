@@ -141,10 +141,8 @@ app.post('/api/create-playlist', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'label and uris are required' });
   }
   try {
-    const me = await spotify.getMe(req.session.accessToken);
     const playlist = await spotify.createPlaylist(
       req.session.accessToken,
-      me.id,
       `${label} — auto-sorted`,
       `Auto-sorted by first_app for ${label}`
     );
