@@ -134,6 +134,19 @@ async function getUserPlaylists(accessToken) {
   return playlists;
 }
 
+async function getPlaylistTrackUris(accessToken, playlistId) {
+  const uris = new Set();
+  let url = `https://api.spotify.com/v1/playlists/${playlistId}/items?fields=items(item(uri)),next&limit=100`;
+  while (url) {
+    const data = await apiFetch(url, accessToken);
+    for (const item of data.items) {
+      if (item.item && item.item.uri) uris.add(item.item.uri);
+    }
+    url = data.next;
+  }
+  return uris;
+}
+
 async function createPlaylist(accessToken, name, description) {
   return apiFetch('https://api.spotify.com/v1/me/playlists', accessToken, {
     method: 'POST',
@@ -159,6 +172,7 @@ module.exports = {
   topPlayedByCount,
   getMe,
   getUserPlaylists,
+  getPlaylistTrackUris,
   createPlaylist,
   addTracksToPlaylist
 };

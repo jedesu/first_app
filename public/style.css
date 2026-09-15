@@ -203,22 +203,6 @@ select:focus { outline: 2px solid var(--accent); }
   gap: 8px;
 }
 .playlist-action select { font-size: 12px; padding: 6px 10px; }
-.top-played {
-  border-top: 1px solid var(--border);
-  padding-top: 14px;
-  margin-top: 4px;
-}
-.top-played h4 {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: 0 0 10px;
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--muted);
-}
 
 #selection-bar[hidden] {
   display: none;

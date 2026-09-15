@@ -103,7 +103,6 @@ app.get('/api/recent-by-bucket', requireAuth, async (req, res) => {
     const tracks = await spotify.getRecentlyPlayed(req.session.accessToken);
     const groups = spotify.groupByBucket(tracks, 'playedAt', groupBy).map(group => ({
       ...group,
-      topPlayed: spotify.topPlayedByCount(group.tracks, 20),
       tracks: spotify.dedupeTracks(group.tracks)
     }));
     const overallTopPlayed = spotify.topPlayedByCount(tracks, 20);
@@ -128,8 +127,12 @@ app.post('/api/add-to-playlist', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'playlistId and uris are required' });
   }
   try {
-    await spotify.addTracksToPlaylist(req.session.accessToken, playlistId, uris);
-    res.json({ ok: true });
+    const existingUris = await spotify.getPlaylistTrackUris(req.session.accessToken, playlistId);
+    const newUris = uris.filter(uri => !existingUris.has(uri));
+    if (newUris.length > 0) {
+      await spotify.addTracksToPlaylist(req.session.accessToken, playlistId, newUris);
+    }
+    res.json({ ok: true, added: newUris.length, skipped: uris.length - newUris.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

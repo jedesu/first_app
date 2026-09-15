@@ -49,9 +49,14 @@ function playlistTargetSelectHtml(cls) {
   return `<select class="playlist-target ${cls}">${playlistTargetOptionsHtml()}</select>`;
 }
 
-// Adds uris to an existing playlist (if playlistId is set) or creates a new one, returning its URL.
+// Adds uris to an existing playlist (if playlistId is set) or creates a new one.
+// Returns { url, message } — for an existing playlist, songs already in it are skipped
+// server-side and message notes how many were added vs. skipped.
 async function addTracksToTarget(playlistId, label, uris) {
-  if (!playlistId) return createPlaylist(label, uris);
+  if (!playlistId) {
+    const url = await createPlaylist(label, uris);
+    return { url, message: null };
+  }
   const res = await fetch('/api/add-to-playlist', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -60,7 +65,11 @@ async function addTracksToTarget(playlistId, label, uris) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed');
   const playlist = userPlaylists.find(p => p.id === playlistId);
-  return playlist ? playlist.url : `https://open.spotify.com/playlist/${playlistId}`;
+  const url = playlist ? playlist.url : `https://open.spotify.com/playlist/${playlistId}`;
+  const message = data.skipped > 0
+    ? `Added ${data.added}, skipped ${data.skipped} already in playlist`
+    : `Added ${data.added}`;
+  return { url, message };
 }
 
 function isCustomMode() {
@@ -113,25 +122,6 @@ function customGroupHtml(group) {
   return `<ul>${group.tracks.map(t => trackCheckboxHtml(t)).join('')}</ul>`;
 }
 
-function topPlayedHtml(group) {
-  const items = group.topPlayed.map(t => `
-    <li><div class="track-row"><span>${escapeHtml(t.name)} <span class="artist">— ${escapeHtml(t.artists)} (${t.count}x)</span></span></div></li>
-  `).join('');
-  return `
-    <div class="top-played">
-      <h4>
-        Top played
-        <span class="playlist-action">
-          ${playlistTargetSelectHtml('top-played-target')}
-          <button class="make-playlist-btn make-top-playlist-btn">Add top played</button>
-        </span>
-      </h4>
-      <ul>${items}</ul>
-      <div class="result top-played-result"></div>
-    </div>
-  `;
-}
-
 function bindTrackCheckbox(cb) {
   cb.addEventListener('change', () => {
     const uri = cb.dataset.uri;
@@ -173,14 +163,15 @@ function bindOverallTopPlayedCard(overallTopPlayed) {
     btn.disabled = true;
     btn.textContent = 'Adding...';
     try {
-      const playlistUrl = await addTracksToTarget(select.value, 'Overall Top Played', overallTopPlayed.map(t => t.uri));
-      resultDiv.innerHTML = `<a class="playlist-link" href="${playlistUrl}" target="_blank">Open playlist ↗</a>`;
-      btn.remove();
-      select.remove();
+      const { url, message } = await addTracksToTarget(select.value, 'Overall Top Played', overallTopPlayed.map(t => t.uri));
+      // Left active (not removed) — the top-played list changes over time, so the
+      // user can reload and add again later without re-adding songs already there.
+      resultDiv.innerHTML = `<a class="playlist-link" href="${url}" target="_blank">Open playlist ↗</a>${message ? ` <span class="artist">— ${escapeHtml(message)}</span>` : ''}`;
     } catch (err) {
+      resultDiv.textContent = `Error: ${err.message}`;
+    } finally {
       btn.disabled = false;
       btn.textContent = 'Add overall top played';
-      resultDiv.textContent = `Error: ${err.message}`;
     }
   });
 }
@@ -198,7 +189,6 @@ function renderGroups(groups, showTopPlayed, overallTopPlayed) {
   groups.forEach(group => {
     const card = document.createElement('div');
     card.className = 'group-card';
-    const hasTopPlayed = showTopPlayed && !custom && group.topPlayed && group.topPlayed.length > 0;
     card.innerHTML = `
       <h3>
         <span class="month-heading">
@@ -209,7 +199,6 @@ function renderGroups(groups, showTopPlayed, overallTopPlayed) {
       </h3>
       ${custom ? customGroupHtml(group) : trackListHtml(group.tracks)}
       <div class="result"></div>
-      ${hasTopPlayed ? topPlayedHtml(group) : ''}
     `;
 
     if (custom) {
@@ -233,8 +222,8 @@ function renderGroups(groups, showTopPlayed, overallTopPlayed) {
         btn.disabled = true;
         btn.textContent = 'Adding...';
         try {
-          const playlistUrl = await addTracksToTarget(select.value, group.label, group.tracks.map(t => t.uri));
-          resultDiv.innerHTML = `<a class="playlist-link" href="${playlistUrl}" target="_blank">Open playlist ↗</a>`;
+          const { url, message } = await addTracksToTarget(select.value, group.label, group.tracks.map(t => t.uri));
+          resultDiv.innerHTML = `<a class="playlist-link" href="${url}" target="_blank">Open playlist ↗</a>${message ? ` <span class="artist">— ${escapeHtml(message)}</span>` : ''}`;
           btn.remove();
           select.remove();
         } catch (err) {
@@ -243,26 +232,6 @@ function renderGroups(groups, showTopPlayed, overallTopPlayed) {
           resultDiv.textContent = `Error: ${err.message}`;
         }
       });
-
-      if (hasTopPlayed) {
-        const topBtn = card.querySelector('.make-top-playlist-btn');
-        const topSelect = card.querySelector('.top-played-target');
-        const topResultDiv = card.querySelector('.top-played-result');
-        topBtn.addEventListener('click', async () => {
-          topBtn.disabled = true;
-          topBtn.textContent = 'Adding...';
-          try {
-            const playlistUrl = await addTracksToTarget(topSelect.value, `${group.label} — Top Played`, group.topPlayed.map(t => t.uri));
-            topResultDiv.innerHTML = `<a class="playlist-link" href="${playlistUrl}" target="_blank">Open playlist ↗</a>`;
-            topBtn.remove();
-            topSelect.remove();
-          } catch (err) {
-            topBtn.disabled = false;
-            topBtn.textContent = 'Add top played';
-            topResultDiv.textContent = `Error: ${err.message}`;
-          }
-        });
-      }
     }
     groupsEl.appendChild(card);
   });
@@ -289,8 +258,8 @@ selectionCreateBtn.addEventListener('click', async () => {
     const uris = Array.from(selectedTracks.entries())
       .sort((a, b) => new Date(a[1].date) - new Date(b[1].date))
       .map(([uri]) => uri);
-    const playlistUrl = await addTracksToTarget(selectionTargetSelect.value, name, uris);
-    selectionResultEl.innerHTML = `<a class="playlist-link" href="${playlistUrl}" target="_blank">Open playlist ↗</a>`;
+    const { url, message } = await addTracksToTarget(selectionTargetSelect.value, name, uris);
+    selectionResultEl.innerHTML = `<a class="playlist-link" href="${url}" target="_blank">Open playlist ↗</a>${message ? ` — ${escapeHtml(message)}` : ''}`;
     selectedTracks.clear();
     document.querySelectorAll('.track-row input[type="checkbox"]').forEach(cb => { cb.checked = false; });
     updateSelectionBar();
