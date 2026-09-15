@@ -1,5 +1,3 @@
-const fetch = require('node-fetch');
-
 const SEASON_BY_MONTH = [
   'Winter', 'Winter', 'Spring', 'Spring', 'Spring', 'Summer',
   'Summer', 'Summer', 'Fall', 'Fall', 'Fall', 'Winter'
@@ -63,15 +61,33 @@ async function getRecentlyPlayed(accessToken) {
   }));
 }
 
+// First-month-of-season index (Winter -> Dec of the *previous* year bucket handled via year shift below)
+const SEASON_START_MONTH = { Winter: 11, Spring: 2, Summer: 5, Fall: 8 };
+
 function groupByBucket(tracks, dateField, groupBy) {
   const labelFn = groupBy === 'season' ? seasonLabel : monthLabel;
   const groups = new Map();
   for (const track of tracks) {
-    const label = labelFn(track[dateField]);
-    if (!groups.has(label)) groups.set(label, []);
-    groups.get(label).push(track);
+    const date = track[dateField];
+    const label = labelFn(date);
+    if (!groups.has(label)) {
+      let sortKey;
+      if (groupBy === 'season') {
+        const season = SEASON_BY_MONTH[date.getMonth()];
+        // December's "Winter" belongs to the Winter that starts that December,
+        // so keep year as-is; Jan/Feb Winter belongs to the Winter that started the previous December.
+        const year = (season === 'Winter' && date.getMonth() !== 11) ? date.getFullYear() - 1 : date.getFullYear();
+        sortKey = new Date(year, SEASON_START_MONTH[season], 1).getTime();
+      } else {
+        sortKey = new Date(date.getFullYear(), date.getMonth(), 1).getTime();
+      }
+      groups.set(label, { tracks: [], sortKey });
+    }
+    groups.get(label).tracks.push(track);
   }
-  return Array.from(groups.entries()).map(([label, items]) => ({ label, tracks: items }));
+  return Array.from(groups.entries())
+    .map(([label, { tracks: items, sortKey }]) => ({ label, tracks: items, sortKey }))
+    .sort((a, b) => b.sortKey - a.sortKey);
 }
 
 async function getMe(accessToken) {
