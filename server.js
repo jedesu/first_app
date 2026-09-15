@@ -24,6 +24,8 @@ app.use(session({
 const SCOPES = [
   'user-library-read',
   'user-read-recently-played',
+  'playlist-read-private',
+  'playlist-read-collaborative',
   'playlist-modify-private',
   'playlist-modify-public'
 ].join(' ');
