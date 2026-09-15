@@ -7,8 +7,26 @@ const loadBtn = document.getElementById('loadBtn');
 const sourceSelect = document.getElementById('source');
 const groupBySelect = document.getElementById('groupBy');
 
+const groupSelectionBar = document.getElementById('group-selection-bar');
+const groupSelectionCountEl = document.getElementById('group-selection-count');
+const groupSelectionTargetSelect = document.getElementById('group-selection-target');
+const groupSelectionNameInput = document.getElementById('group-selection-name');
+const groupSelectionCreateBtn = document.getElementById('group-selection-create-btn');
+const groupSelectionClearBtn = document.getElementById('group-selection-clear-btn');
+const groupSelectionResultEl = document.getElementById('group-selection-result');
+
 // Existing playlists the user can add songs to, fetched once after login.
 let userPlaylists = [];
+
+// label -> group, for groups checked to be combined into one playlist via the bottom bar.
+const selectedGroups = new Map();
+
+function updateGroupSelectionBar() {
+  const count = selectedGroups.size;
+  groupSelectionBar.hidden = count === 0;
+  const songCount = Array.from(selectedGroups.values()).reduce((n, g) => n + g.tracks.length, 0);
+  groupSelectionCountEl.textContent = `${count} group${count === 1 ? '' : 's'} selected (${songCount} song${songCount === 1 ? '' : 's'})`;
+}
 
 async function loadUserPlaylists() {
   try {
@@ -164,6 +182,7 @@ function renderGroups(groups, showTopPlayed, overallTopPlayed) {
     card.innerHTML = `
       <h3>
         <span class="month-heading">
+          <input type="checkbox" class="group-select-checkbox" ${selectedGroups.has(group.label) ? 'checked' : ''} title="Select this group to combine with others below" />
           <span>${escapeHtml(group.label)} (${group.tracks.length})</span>
         </span>
         <span class="playlist-action">${playlistTargetControlsHtml('group-target', 'group-name', `${group.label} — auto-sorted`)}<button class="make-playlist-btn">Add this group</button></span>
@@ -171,6 +190,16 @@ function renderGroups(groups, showTopPlayed, overallTopPlayed) {
       ${trackListHtml(group.tracks)}
       <div class="result"></div>
     `;
+
+    const groupCheckbox = card.querySelector('.group-select-checkbox');
+    groupCheckbox.addEventListener('change', () => {
+      if (groupCheckbox.checked) {
+        selectedGroups.set(group.label, group);
+      } else {
+        selectedGroups.delete(group.label);
+      }
+      updateGroupSelectionBar();
+    });
 
     const btn = card.querySelector('.make-playlist-btn');
     const select = card.querySelector('.group-target');
@@ -212,9 +241,57 @@ async function createPlaylist(label, uris) {
   return data.playlistUrl;
 }
 
+groupSelectionCreateBtn.addEventListener('click', async () => {
+  if (selectedGroups.size === 0) return;
+  const groupsList = Array.from(selectedGroups.values());
+  const defaultName = groupsList.map(g => g.label).join(' + ');
+  const name = groupSelectionNameInput.value.trim() || defaultName;
+  groupSelectionCreateBtn.disabled = true;
+  groupSelectionCreateBtn.textContent = groupSelectionTargetSelect.value ? 'Adding...' : 'Creating...';
+  groupSelectionResultEl.textContent = '';
+  try {
+    const seen = new Set();
+    const uris = [];
+    for (const g of groupsList) {
+      for (const t of g.tracks) {
+        if (!seen.has(t.uri)) {
+          seen.add(t.uri);
+          uris.push(t.uri);
+        }
+      }
+    }
+    const { url, message } = await addTracksToTarget(groupSelectionTargetSelect.value, name, uris);
+    groupSelectionResultEl.innerHTML = `<a class="playlist-link" href="${url}" target="_blank">Open playlist ↗</a>${message ? ` — ${escapeHtml(message)}` : ''}`;
+    selectedGroups.clear();
+    document.querySelectorAll('.group-select-checkbox').forEach(cb => { cb.checked = false; });
+    updateGroupSelectionBar();
+    groupSelectionNameInput.value = '';
+    // Point future selections at the playlist just used.
+    const newId = !groupSelectionTargetSelect.value ? playlistIdFromUrl(url) : groupSelectionTargetSelect.value;
+    if (newId) {
+      await loadUserPlaylists();
+      groupSelectionTargetSelect.value = newId;
+    }
+  } catch (err) {
+    groupSelectionResultEl.textContent = `Error: ${err.message}`;
+  } finally {
+    groupSelectionCreateBtn.disabled = false;
+    groupSelectionCreateBtn.textContent = 'Create playlist';
+  }
+});
+
+groupSelectionClearBtn.addEventListener('click', () => {
+  selectedGroups.clear();
+  document.querySelectorAll('.group-select-checkbox').forEach(cb => { cb.checked = false; });
+  groupSelectionResultEl.textContent = '';
+  updateGroupSelectionBar();
+});
+
 loadBtn.addEventListener('click', async () => {
   statusEl.textContent = 'Loading your songs from Spotify...';
   groupsEl.innerHTML = '';
+  selectedGroups.clear();
+  updateGroupSelectionBar();
   const source = sourceSelect.value;
   const groupBy = groupBySelect.value;
   const endpoint = source === 'recent' ? '/api/recent-by-bucket' : '/api/liked-by-bucket';

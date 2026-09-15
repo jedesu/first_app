@@ -42,6 +42,15 @@
     </section>
   </main>
 
+  <div id="group-selection-bar" hidden>
+    <span id="group-selection-count">0 groups selected</span>
+    <select id="group-selection-target" class="playlist-target"><option value="">+ New playlist</option></select>
+    <input id="group-selection-name" type="text" placeholder="Playlist name" />
+    <button id="group-selection-create-btn" class="btn primary">Create playlist</button>
+    <button id="group-selection-clear-btn" class="btn ghost">Clear</button>
+    <span id="group-selection-result"></span>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
