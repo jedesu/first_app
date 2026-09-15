@@ -287,6 +287,17 @@ groupSelectionClearBtn.addEventListener('click', () => {
   updateGroupSelectionBar();
 });
 
+// Recently Played only ever returns ~50 tracks, so splitting them by month/season
+// mostly just makes one group — disable Group By there to avoid the false impression
+// that it's doing something meaningful.
+function updateGroupByAvailability() {
+  const isRecent = sourceSelect.value === 'recent';
+  groupBySelect.disabled = isRecent;
+  if (isRecent) groupBySelect.value = 'month';
+}
+sourceSelect.addEventListener('change', updateGroupByAvailability);
+updateGroupByAvailability();
+
 loadBtn.addEventListener('click', async () => {
   statusEl.textContent = 'Loading your songs from Spotify...';
   groupsEl.innerHTML = '';

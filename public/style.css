@@ -103,6 +103,7 @@ select {
   cursor: pointer;
 }
 select:focus { outline: 2px solid var(--accent); }
+select:disabled { opacity: 0.4; cursor: default; }
 #who {
   color: var(--text);
   font-weight: 700;
